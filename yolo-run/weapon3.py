@@ -2,7 +2,7 @@ import cv2
 from ultralytics import YOLO
 
 # 1. Load model ONNX
-model_path = r"D:/Unarrage/4Feb-box.pt"
+model_path = r"D:\1. STUDY\ROBOCON 2026\Weapons1\src\model\7Feb.pt"
 
 try:
     model = YOLO(model_path, task='detect')
