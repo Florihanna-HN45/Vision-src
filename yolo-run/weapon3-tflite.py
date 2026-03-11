@@ -16,8 +16,8 @@ except Exception as e:
 
 # 2. Cấu hình Camera
 #ip_url = "http://192.168.2.74:8080/video" 
-ip_url = 0  
-cap = cv2.VideoCapture(ip_url)
+ip_url = 1 
+cap = cv2.VideoCapture(ip_url, cv2.CAP_DSHOW)
 
 # Thiết lập độ phân giải để đồng bộ với imgsz của model (giúp tăng FPS)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
