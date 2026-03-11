@@ -5,7 +5,7 @@ import time
 
 # 1. Cấu hình
 model = YOLO(r"D:\1. STUDY\ROBOCON 2026\Weapons1\src\model\7Feb.pt")
-ip_url = "http://192.168.1.117:8080/video"
+ip_url = "http://192.168.1.113:8080/video"
 cap = cv2.VideoCapture(ip_url, cv2.CAP_FFMPEG)
 
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)

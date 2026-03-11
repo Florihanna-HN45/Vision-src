@@ -19,7 +19,7 @@ class_names = [
     "class2"
 ]
 #GIF
-gif_path = r"C:\Downloads\7.gif"
+gif_path = 0
 cap = cv2.VideoCapture(gif_path)
 #URL for IP camera
 # url =""

@@ -10,7 +10,7 @@ pathlib.PosixPath = pathlib.WindowsPath
 # ------------------------------
 
 # 1. Load model YOLOv5
-model_path = r"D:/Unarrage/4Feb.pt"
+model_path = r"D:\1. STUDY\ROBOCON 2026\Weapons1\src\model\7Feb.pt"
 # model_path = r"D:/Unarrage/hoa.pt"
 try:
     # Thêm force_reload=True nếu bạn nghi ngờ cache bị lỗi

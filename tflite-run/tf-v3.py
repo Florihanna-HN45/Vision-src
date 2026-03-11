@@ -31,7 +31,8 @@ input_h, input_w = input_details[0]['shape'][1], input_details[0]['shape'][2]
 
 # Danh sach class (Tam thoi de nua de tranh crash)
 class_names = ["class0", "class1", "class2"]
-url ="http://192.168.1.123:8080/video"
+#url ="http://192.168.1.123:8080/video"
+url = 0
 cap = cv2.VideoCapture(url)
 conf_thres = 0.5 
 nms_thres = 0.4 

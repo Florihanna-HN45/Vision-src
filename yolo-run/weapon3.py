@@ -1,8 +1,9 @@
+#Chạy ổn nhất ^^
 import cv2
 from ultralytics import YOLO
 
 # 1. Load model ONNX
-model_path = r"D:\1. STUDY\ROBOCON 2026\Weapons1\src\model\7Feb.pt"
+model_path = r"C:\Users\This pc\Downloads\pdisease1.pt"
 
 try:
     model = YOLO(model_path, task='detect')
@@ -16,10 +17,10 @@ except Exception as e:
     exit()
 
 # 2. Cấu hình Camera
-# ip_url = "http://192.168.1.129:8080/video/video" 
+ip_url = "http://192.168.2.74:8080/video" 
 
-# cap = cv2.VideoCapture(ip_url)
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(ip_url)
+#cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
