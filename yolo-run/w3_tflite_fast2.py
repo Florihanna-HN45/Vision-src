@@ -23,7 +23,7 @@ from collections import deque
 # -----------------------------------------------------------------
 # 
 # -----------------------------------------------------------------
-MODEL_PATH    = r"C:\Users\This pc\Downloads\pdisease1_int8 (2).tflite"
+MODEL_PATH    = r"D:\0. WORK\1. STUDY\3. NCKH 2526\4. SRC\yolo26-tflite\pdisease1_int8 (2).tflite"
 CAMERA_INDEX  = 1
 
 CAP_WIDTH     = 640

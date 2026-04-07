@@ -4,7 +4,7 @@ weapon3-tflite OPTIMIZED — Tối ưu FPS cho phần cứng yếu
 Fix: imgsz=640 cố định (TFLite int8 shape bị đóng băng lúc export)
 Tăng FPS bằng: threading | skip frame | adaptive skip | max_det | conf cao hơn
 """
-
+##Đánh giá: hơi giật lag => cần tăng
 import cv2
 import threading
 import queue
@@ -16,7 +16,7 @@ from ultralytics import YOLO
 # ─────────────────────────────────────────────
 # CẤU HÌNH — Chỉnh tại đây
 # ─────────────────────────────────────────────
-MODEL_PATH   = r"D:\0. WORK\1. STUDY\3. NCKH 2526\4. SRC\yolo26-tflite\pdisease1_int8 (2).tflite"
+MODEL_PATH   = r"C:\Users\This pc\Downloads\pdisease1_int8 (2).tflite"
 CAMERA_INDEX = 1                # 0 = webcam mặc định, 1 = camera phụ
 
 # Camera input resolution (nhỏ hơn → đọc frame nhanh hơn)

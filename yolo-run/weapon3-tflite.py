@@ -4,7 +4,7 @@ from ultralytics import YOLO
 
 # 1. Load model TFLITE
 # Đảm bảo đường dẫn file .tflite chính xác
-model_path = r"C:\Users\This pc\Downloads\pdisease1_int8 (2).tflite"
+model_path = r"C:\Users\This pc\Downloads\pdisease1.tflite"
 
 try:
     # Ultralytics hỗ trợ chạy trực tiếp .tflite thông qua interpreter

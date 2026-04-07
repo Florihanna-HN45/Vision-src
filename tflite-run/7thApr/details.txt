@@ -1,0 +1,7 @@
+model: yolov8n
+type: tflite
+chi tiết:
+dts: COCO - > phục vụ test model chạy trên raspi sau đó mới tiến hành đánh nhãn chi tiết
+bbox all green
+tự động lấy label
+fps: 3 frame lấy 1 để tăng tốc xử lý.
