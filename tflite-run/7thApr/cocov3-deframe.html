@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YOLOv8 Object Detection - Cloud Version (Optimized)</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite/dist/tf-tflite.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jpeg-js/0.4.4/jpeg.min.js"></script>
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0e27; color: #e0e0e0; font-family: 'JetBrains Mono', 'Courier New', monospace;
+      overflow: hidden; height: 100vh; position: relative;
+    }
+    #canvasContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    #canvas { display: block; width: 100%; height: 100%; }
+    video { display: none; }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px);
+      border: 1px solid rgba(248, 202, 0, 0.15); border-radius: 12px;
+      padding: 16px; position: fixed; z-index: 100; color: #e0e0e0;
+    }
+    .stats-panel { top: 16px; left: 16px; min-width: 280px; font-size: 13px; line-height: 1.8; }
+    .controls-panel { bottom: 16px; left: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .control-row { display: flex; align-items: center; gap: 8px; }
+    .label { font-weight: 600; color: #f8ca00; min-width: 100px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="range"] { flex: 1; height: 4px; border-radius: 2px; background: rgba(248, 202, 0, 0.2); outline: none; -webkit-appearance: none; appearance: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #f8ca00; cursor: pointer; box-shadow: 0 0 8px rgba(248, 202, 0, 0.6); }
+    .value-display { min-width: 45px; text-align: right; color: #f8ca00; font-weight: 600; }
+    button {
+      background: linear-gradient(135deg, #f8ca00, #ffd700); color: #0a0e27; border: none;
+      padding: 10px 16px; border-radius: 8px; font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(248, 202, 0, 0.2);
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(248, 202, 0, 0.4); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .stat-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(248, 202, 0, 0.1); }
+    .stat-label { color: #8899aa; font-size: 12px; }
+    .stat-value { color: #f8ca00; font-weight: 600; font-size: 13px; }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .status-loading { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+    .status-ready { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+    .status-error { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+    .divider { height: 1px; background: rgba(248, 202, 0, 0.1); margin: 8px 0; }
+    .info-text { font-size: 11px; color: #667788; margin-top: 4px; line-height: 1.4; }
+    .button-group { display: flex; gap: 8px; }
+    .button-group button { flex: 1; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <video id="video"></video>
+  <div id="canvasContainer">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="glass-panel stats-panel">
+    <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #f8ca00; letter-spacing: 1px;">
+      DETECTION MONITOR
+    </div>
+    <div class="divider"></div>
+    <div class="stat-item">
+      <span class="stat-label">Model Status</span>
+      <span class="status-badge status-loading pulse" id="modelStatus">LOADING</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Model</span>
+      <span class="stat-value" id="modelName">YOLOv8n (Optimized)</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Render FPS</span>
+      <span class="stat-value" id="fps">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Inference Time</span>
+      <span class="stat-value" id="inferenceTime">0 ms</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Objects Detected</span>
+      <span class="stat-value" id="objectCount">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Camera Resolution</span>
+      <span class="stat-value" id="resolution">-</span>
+    </div>
+    <div class="divider"></div>
+    <div class="info-text">
+      AI Interval: 1 inference per 3 frames<br>
+      Input size: 640×640 (YOLOv8 standard)
+    </div>
+  </div>
+
+  <div class="glass-panel controls-panel">
+    <div style="font-weight: 700; font-size: 12px; color: #f8ca00; text-transform: uppercase;">
+      Controls
+    </div>
+    <button id="cameraBtn" onclick="toggleCamera()" style="width: 100%;" disabled>Start Camera</button>
+    <div class="divider"></div>
+    <div class="control-row">
+      <span class="label">Confidence</span>
+      <input type="range" id="confidenceSlider" min="0.1" max="0.9" step="0.05" value="0.5" oninput="updateConfidence(this.value)">
+      <span class="value-display" id="confValue">0.50</span>
+    </div>
+    <div class="control-row">
+      <span class="label">IOU NMS</span>
+      <input type="range" id="iouSlider" min="0.1" max="0.9" step="0.05" value="0.45" oninput="updateIoU(this.value)">
+      <span class="value-display" id="iouValue">0.45</span>
+    </div>
+    <div class="divider"></div>
+    <div class="button-group">
+      <button onclick="captureFrame()" style="flex: 1;">Capture</button>
+      <button onclick="clearDetections()" style="flex: 1;">Clear</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const video = document.getElementById('video');
+    
+    let tfliteModel = null; 
+    let isRunning = false;
+    let detections = [];
+    
+    let confidenceThreshold = 0.5;
+    let iouThreshold = 0.45;
+    
+    // --- Các biến tối ưu FPS ---
+    let frameSkipCount = 0;
+    const INFERENCE_INTERVAL = 3; // Chỉ đọc model 1 lần mỗi 3 frame
+    
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let inferenceTime = 0;
+
+    const COCO_CLASSES = [
+      'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+      'fire hydrant', 'stop sign', 'parking meter', 'bench', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+      'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis',
+      'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass',
+      'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli',
+      'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'dining table',
+      'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'microwave', 'oven', 'toaster', 'sink',
+      'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush', 'basketball', 'baseball'
+    ];
+
+    async function initializeModel() {
+      try {
+        updateStatus('LOADING');
+        tflite.setWasmPath('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite/dist/');
+        const modelPath = 'https://cdn.jsdelivr.net/gh/Florihanna-HN45/Vision-src@master/tflite-run/7thApr/coco_yolov8n_int8.tflite';
+        
+        tfliteModel = await tflite.loadTFLiteModel(modelPath);
+        
+        updateStatus('READY');
+        document.getElementById('modelStatus').classList.remove('pulse');
+        document.getElementById('cameraBtn').disabled = false;
+      } catch (error) {
+        console.error('Error loading model:', error);
+        updateStatus('ERROR'); alert('Model load failed: ' + error.message);
+      }
+    }
+
+    function updateStatus(status) {
+      const badge = document.getElementById('modelStatus');
+      badge.textContent = status; badge.className = 'status-badge status-' + status.toLowerCase();
+    }
+
+    function updateConfidence(value) {
+      confidenceThreshold = parseFloat(value);
+      document.getElementById('confValue').textContent = confidenceThreshold.toFixed(2);
+    }
+
+    function updateIoU(value) {
+      iouThreshold = parseFloat(value);
+      document.getElementById('iouValue').textContent = iouThreshold.toFixed(2);
+    }
+
+    async function toggleCamera() {
+      if (!tfliteModel) { alert('Model is still loading.'); return; }
+
+      if (!isRunning) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'environment' }
+          });
+          video.srcObject = stream; video.play(); isRunning = true;
+          document.getElementById('cameraBtn').textContent = 'Stop Camera';
+          video.onloadedmetadata = () => {
+            document.getElementById('resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
+            detect(); // Bắt đầu vòng lặp
+          };
+        } catch (error) { alert('Camera error: ' + error.message); }
+      } else { stopCamera(); }
+    }
+
+    function stopCamera() {
+      isRunning = false;
+      const stream = video.srcObject;
+      if (stream) stream.getTracks().forEach(track => track.stop());
+      document.getElementById('cameraBtn').textContent = 'Start Camera';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      detections = []; document.getElementById('objectCount').textContent = '0';
+    }
+
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+
+    function preprocessImage(image, inputWidth, inputHeight) {
+      const canvasTmp = document.createElement('canvas');
+      canvasTmp.width = inputWidth; canvasTmp.height = inputHeight;
+      const ctxTmp = canvasTmp.getContext('2d');
+      ctxTmp.drawImage(image, 0, 0, inputWidth, inputHeight);
+      const data = ctxTmp.getImageData(0, 0, inputWidth, inputHeight).data;
+      const normalized = new Float32Array(inputWidth * inputHeight * 3);
+      for (let i = 0; i < data.length; i += 4) {
+        normalized[i/4] = data[i]/255.0;
+        normalized[inputWidth*inputHeight + i/4] = data[i+1]/255.0;
+        normalized[inputWidth*inputHeight*2 + i/4] = data[i+2]/255.0;
+      }
+      return normalized;
+    }
+
+    function processDetections(outputData, scaleX, scaleY) {
+      const newDetections = [];
+      const outputSize = outputData.length / 85;
+      for (let i = 0; i < outputSize; i++) {
+        const index = i * 85;
+        const confidence = outputData[index + 4];
+        if (confidence < confidenceThreshold) continue;
+        let maxClass = 0; let maxScore = 0;
+        for (let j = 0; j < 80; j++) {
+          const score = outputData[index + 5 + j];
+          if (score > maxScore) { maxScore = score; maxClass = j; }
+        }
+        if (maxScore < confidenceThreshold) continue;
+        const x = outputData[index]; const y = outputData[index + 1];
+        const w = outputData[index + 2]; const h = outputData[index + 3];
+        newDetections.push({
+          x: (x - w / 2) * scaleX, y: (y - h / 2) * scaleY,
+          width: w * scaleX, height: h * scaleY,
+          confidence: confidence * maxScore, class: maxClass, className: COCO_CLASSES[maxClass]
+        });
+      }
+      return nonMaxSuppression(newDetections, iouThreshold);
+    }
+
+    function nonMaxSuppression(boxes, iouThreshold) {
+      if (boxes.length === 0) return [];
+      boxes.sort((a, b) => b.confidence - a.confidence);
+      const kept = [];
+      for (let i = 0; i < boxes.length; i++) {
+        let keep = true;
+        for (let j = 0; j < kept.length; j++) {
+          if (calculateIoU(boxes[i], kept[j]) > iouThreshold) { keep = false; break; }
+        }
+        if (keep) kept.push(boxes[i]);
+      }
+      return kept;
+    }
+
+    function calculateIoU(box1, box2) {
+      const x1 = Math.max(box1.x, box2.x); const y1 = Math.max(box1.y, box2.y);
+      const x2 = Math.min(box1.x + box1.width, box2.x + box2.width);
+      const y2 = Math.min(box1.y + box1.height, box2.y + box2.height);
+      const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+      const union = (box1.width * box1.height) + (box2.width * box2.height) - intersection;
+      return union === 0 ? 0 : intersection / union;
+    }
+
+    // --- HÀM VẼ BOUNDING BOX ĐƯỢC TÁCH RIÊNG ---
+    function drawBoundingBoxes(dets) {
+      dets.forEach(det => {
+        ctx.strokeStyle = '#f8ca00'; ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(248, 202, 0, 0.5)'; ctx.shadowBlur = 15;
+        ctx.strokeRect(det.x, det.y, det.width, det.height);
+        ctx.shadowBlur = 0;
+
+        const label = `${det.className} ${(det.confidence * 100).toFixed(1)}%`;
+        const fontSize = 14; ctx.font = `bold ${fontSize}px 'JetBrains Mono'`;
+        const textWidth = ctx.measureText(label).width + 8; const textHeight = fontSize + 6;
+
+        ctx.fillStyle = '#f8ca00'; ctx.fillRect(det.x, det.y - textHeight - 2, textWidth, textHeight);
+        ctx.fillStyle = '#0a0e27'; ctx.textBaseline = 'middle'; ctx.fillText(label, det.x + 4, det.y - fontSize / 2 - 1);
+      });
+    }
+
+    async function detect() {
+      if (!isRunning || !tfliteModel) return;
+
+      resizeCanvas();
+      
+      // 1. Render Video liên tục ở 60 FPS
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // 2. Kỹ thuật Frame Skipping (Bỏ qua frame)
+      frameSkipCount++;
+      if (frameSkipCount % INFERENCE_INTERVAL !== 0) {
+        // Nếu không phải lượt chạy AI -> Vẽ lại kết quả Bounding Box cũ và kết thúc ngay
+        drawBoundingBoxes(detections);
+        requestAnimationFrame(detect);
+        return; 
+      }
+
+      // 3. Chạy Inference (Chỉ thực thi 1 lần mỗi 3 frame)
+      try {
+        const inputWidth = 640; const inputHeight = 640;
+        const startTime = performance.now();
+        const preprocessed = preprocessImage(video, inputWidth, inputHeight);
+        
+        const inputTensor = tf.tensor(preprocessed, [1, inputWidth, inputHeight, 3], 'float32');
+        const outputTensor = tfliteModel.predict(inputTensor);
+        const output = outputTensor.dataSync(); 
+        
+        inputTensor.dispose(); outputTensor.dispose();
+        
+        const endTime = performance.now();
+        inferenceTime = endTime - startTime;
+        const scaleX = canvas.width / inputWidth; const scaleY = canvas.height / inputHeight;
+        
+        // Cập nhật mảng detections mới
+        detections = processDetections(output, scaleX, scaleY);
+        
+        document.getElementById('objectCount').textContent = detections.length;
+        document.getElementById('inferenceTime').textContent = inferenceTime.toFixed(1) + ' ms';
+      } catch (error) {
+        console.error('Detection error:', error);
+      }
+
+      // 4. Vẽ Bounding Box mới
+      drawBoundingBoxes(detections);
+
+      // Tính FPS Render
+      frameCount++;
+      const now = performance.now();
+      if (now - lastTime >= 1000) {
+        document.getElementById('fps').textContent = frameCount * INFERENCE_INTERVAL; // Ước tính render thực tế
+        frameCount = 0; lastTime = now;
+      }
+
+      requestAnimationFrame(detect);
+    }
+
+    function captureFrame() {
+      const link = document.createElement('a'); link.href = canvas.toDataURL('image/png');
+      link.download = 'detection_' + Date.now() + '.png'; link.click();
+    }
+    function clearDetections() { detections = []; document.getElementById('objectCount').textContent = '0'; }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    initializeModel();
+  </script>
+</body>
+</html>

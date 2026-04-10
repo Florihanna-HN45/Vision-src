@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug: TFLite Model Loading</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.11.0/tf.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #0a0e27;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: #f8ca00;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+    
+    .section {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(248, 202, 0, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .section h2 {
+      color: #f8ca00;
+      font-size: 14px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .log {
+      background: rgba(0, 0, 0, 0.3);
+      border-left: 3px solid #f8ca00;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 4px;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .log.success {
+      border-left-color: #4caf50;
+    }
+    
+    .log.error {
+      border-left-color: #f44336;
+    }
+    
+    .log.warning {
+      border-left-color: #ff9800;
+    }
+    
+    .log.info {
+      border-left-color: #2196f3;
+    }
+    
+    .log-item {
+      padding: 4px 0;
+      margin: 2px 0;
+    }
+    
+    .log-item.success { color: #4caf50; }
+    .log-item.error { color: #f44336; }
+    .log-item.warning { color: #ff9800; }
+    .log-item.info { color: #2196f3; }
+    
+    button {
+      background: linear-gradient(135deg, #f8ca00, #ffd700);
+      color: #0a0e27;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 4px 4px 4px 0;
+      font-family: 'Courier New', monospace;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .buttons {
+      margin: 12px 0;
+    }
+    
+    input[type="text"] {
+      background: rgba(0, 0, 0, 0.3);
+      color: #e0e0e0;
+      border: 1px solid rgba(248, 202, 0, 0.2);
+      padding: 8px 12px;
+      border-radius: 4px;
+      width: 100%;
+      margin: 8px 0;
+      font-family: 'Courier New', monospace;
+    }
+    
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #f8ca00;
+      box-shadow: 0 0 8px rgba(248, 202, 0, 0.2);
+    }
+    
+    .status {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+      font-weight: 600;
+    }
+    
+    .status.ready { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+    .status.loading { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+    .status.error { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+    
+    .info-box {
+      background: rgba(33, 150, 243, 0.1);
+      border-left: 3px solid #2196f3;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #f8ca00;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Debug: TFLite Model Loading</h1>
+    
+    <!-- Environment Check -->
+    <div class="section">
+      <h2>1️⃣ Kiểm tra môi trường</h2>
+      <button onclick="checkEnvironment()">Check Environment</button>
+      <div id="envLog" class="log"></div>
+    </div>
+    
+    <!-- File Check -->
+    <div class="section">
+      <h2>2️⃣ Kiểm tra file tồn tại</h2>
+      <div>
+        <label>Model path:</label>
+        <input type="text" id="modelPath" value="coco_yolov8n_int8.tflite" placeholder="Enter model path">
+      </div>
+      <div class="buttons">
+        <button onclick="checkFileExists()">Check File Exists</button>
+        <button onclick="checkFileHeaders()">Check File Headers</button>
+      </div>
+      <div id="fileLog" class="log"></div>
+    </div>
+    
+    <!-- Fetch Test -->
+    <div class="section">
+      <h2>3️⃣ Test Fetch</h2>
+      <button onclick="testFetch()">Test Fetch</button>
+      <div id="fetchLog" class="log"></div>
+    </div>
+    
+    <!-- TFLite Test -->
+    <div class="section">
+      <h2>4️⃣ Test TFLite Interpreter</h2>
+      <button onclick="testTFLiteInterpreter()">Test TFLite</button>
+      <div id="tfliteLog" class="log"></div>
+    </div>
+    
+    <!-- Full Load Test -->
+    <div class="section">
+      <h2>5️⃣ Full Model Load Test</h2>
+      <button onclick="fullModelLoadTest()">Load Full Model</button>
+      <div id="fullLog" class="log"></div>
+      <div id="status" class="status loading" style="display:none;"></div>
+    </div>
+    
+    <!-- Info -->
+    <div class="info-box">
+      <strong>💡 Cách dùng:</strong><br/>
+      1. Chạy từng test từ trên xuống<br/>
+      2. Xem kết quả ở mỗi bước<br/>
+      3. Tìm bước nào bị lỗi<br/>
+      4. Fix theo hướng dẫn
+    </div>
+    
+    <!-- Results Summary -->
+    <div class="section" id="resultsSummary" style="display:none;">
+      <h2>📊 Kết quả tóm tắt</h2>
+      <div id="resultsList"></div>
+    </div>
+  </div>
+
+  <script>
+    let results = {};
+    let logs = {
+      env: [],
+      file: [],
+      fetch: [],
+      tflite: [],
+      full: []
+    };
+
+    function addLog(section, text, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      logs[section].push({ text, type, time: timestamp });
+      updateLogDisplay(section);
+    }
+
+    function updateLogDisplay(section) {
+      const logEl = document.getElementById(section + 'Log');
+      logEl.innerHTML = logs[section]
+        .map(log => `<div class="log-item ${log.type}">[${log.time}] ${log.text}</div>`)
+        .join('');
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function showStatus(text, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = text;
+      statusEl.className = `status ${type}`;
+      statusEl.style.display = 'block';
+    }
+
+    // ============= TEST 1: Environment =============
+    async function checkEnvironment() {
+      logs.env = [];
+      addLog('env', '🔍 Checking environment...', 'info');
+
+      try {
+        // Check fetch API
+        const hasFetch = typeof fetch !== 'undefined';
+        addLog('env', `✓ Fetch API: ${hasFetch}`, hasFetch ? 'success' : 'error');
+
+        // Check TensorFlow
+        const hasTF = typeof tf !== 'undefined';
+        addLog('env', `✓ TensorFlow.js: ${hasTF}`, hasTF ? 'success' : 'error');
+
+        // Check TFLite
+        const hasTFLite = typeof tflite !== 'undefined';
+        addLog('env', `✓ TFLite WASM: ${hasTFLite}`, hasTFLite ? 'success' : 'error');
+
+        // Check location
+        addLog('env', `✓ Location: ${window.location.origin}`, 'info');
+        addLog('env', `✓ Hostname: ${window.location.hostname}`, 'info');
+        addLog('env', `✓ Protocol: ${window.location.protocol}`, 'info');
+
+        // Check window size
+        addLog('env', `✓ Screen: ${window.innerWidth}×${window.innerHeight}`, 'info');
+
+        results.env = hasFetch && hasTF && hasTFLite;
+      } catch (error) {
+        addLog('env', `✗ Error: ${error.message}`, 'error');
+        results.env = false;
+      }
+    }
+
+    // ============= TEST 2: File Exists =============
+    async function checkFileExists() {
+      logs.file = [];
+      const modelPath = document.getElementById('modelPath').value;
+      addLog('file', `🔍 Checking file: ${modelPath}`, 'info');
+
+      try {
+        const response = await fetch(modelPath, { method: 'HEAD' });
+        
+        if (response.ok) {
+          addLog('file', `✓ File found (HTTP ${response.status})`, 'success');
+          
+          const contentLength = response.headers.get('content-length');
+          if (contentLength) {
+            const sizeMB = (contentLength / 1024 / 1024).toFixed(2);
+            addLog('file', `✓ File size: ${sizeMB} MB`, 'success');
+          }
+          
+          const contentType = response.headers.get('content-type');
+          addLog('file', `✓ Content-Type: ${contentType || 'application/octet-stream'}`, 'success');
+          
+          results.fileExists = true;
+        } else {
+          addLog('file', `✗ File not found (HTTP ${response.status})`, 'error');
+          addLog('file', `💡 Kiểm tra lại path: "${modelPath}"`, 'warning');
+          results.fileExists = false;
+        }
+      } catch (error) {
+        addLog('file', `✗ Fetch error: ${error.message}`, 'error');
+        addLog('file', `💡 Server có chạy không? (python3 -m http.server 8000)`, 'warning');
+        results.fileExists = false;
+      }
+    }
+
+    // ============= TEST 3: File Headers =============
+    async function checkFileHeaders() {
+      logs.file = [];
+      const modelPath = document.getElementById('modelPath').value;
+      addLog('file', `🔍 Checking file headers: ${modelPath}`, 'info');
+
+      try {
+        const response = await fetch(modelPath);
+        
+        if (!response.ok) {
+          addLog('file', `✗ HTTP ${response.status}`, 'error');
+          return;
+        }
+
+        // Get buffer
+        const buffer = await response.arrayBuffer();
+        addLog('file', `✓ Downloaded ${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB`, 'success');
+
+        // Check magic number
+        const view = new Uint8Array(buffer);
+        const magic = [view[0], view[1], view[2], view[3]];
+        addLog('file', `✓ Magic bytes: [${magic.join(', ')}]`, 'success');
+
+        // TFLite magic: 0x54 0x46 0x4C 0x33 ("TFL3")
+        if (magic[0] === 0x54 && magic[1] === 0x46 && magic[2] === 0x4C && magic[3] === 0x33) {
+          addLog('file', `✓ Valid TFLite file (TFL3)`, 'success');
+          results.validTFLite = true;
+        } else {
+          addLog('file', `✗ Invalid TFLite format!`, 'error');
+          addLog('file', `💡 File không phải TFLite hoặc bị hỏng`, 'warning');
+          results.validTFLite = false;
+        }
+
+      } catch (error) {
+        addLog('file', `✗ Error: ${error.message}`, 'error');
+      }
+    }
+
+    // ============= TEST 4: Fetch =============
+    async function testFetch() {
+      logs.fetch = [];
+      const modelPath = document.getElementById('modelPath').value;
+      addLog('fetch', `🔍 Testing fetch: ${modelPath}`, 'info');
+
+      try {
+        showStatus('Fetching...', 'loading');
+
+        const startTime = performance.now();
+        const response = await fetch(modelPath);
+        const fetchTime = performance.now() - startTime;
+
+        if (!response.ok) {
+          addLog('fetch', `✗ HTTP ${response.status}`, 'error');
+          showStatus('Fetch failed', 'error');
+          return;
+        }
+
+        addLog('fetch', `✓ Fetch OK (${fetchTime.toFixed(0)}ms)`, 'success');
+        addLog('fetch', `✓ Status: ${response.status}`, 'success');
+        addLog('fetch', `✓ Headers:`, 'success');
+
+        const headers = {
+          'Content-Type': response.headers.get('content-type'),
+          'Content-Length': response.headers.get('content-length'),
+          'Last-Modified': response.headers.get('last-modified'),
+        };
+
+        for (const [key, value] of Object.entries(headers)) {
+          if (value) addLog('fetch', `  - ${key}: ${value}`, 'success');
+        }
+
+        const blob = await response.blob();
+        addLog('fetch', `✓ Blob size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`, 'success');
+
+        results.fetch = true;
+        showStatus('Fetch successful', 'ready');
+
+      } catch (error) {
+        addLog('fetch', `✗ Error: ${error.message}`, 'error');
+        showStatus('Fetch failed', 'error');
+        results.fetch = false;
+      }
+    }
+
+    // ============= TEST 5: TFLite =============
+    async function testTFLiteInterpreter() {
+      logs.tflite = [];
+      const modelPath = document.getElementById('modelPath').value;
+      addLog('tflite', `🔍 Testing TFLite interpreter`, 'info');
+
+      try {
+        showStatus('Loading...', 'loading');
+
+        if (typeof tflite === 'undefined') {
+          addLog('tflite', `✗ TFLite not available`, 'error');
+          showStatus('TFLite not loaded', 'error');
+          return;
+        }
+
+        addLog('tflite', `✓ TFLite available`, 'success');
+
+        const response = await fetch(modelPath);
+        if (!response.ok) {
+          addLog('tflite', `✗ Failed to fetch model`, 'error');
+          return;
+        }
+
+        const buffer = await response.arrayBuffer();
+        addLog('tflite', `✓ Got buffer: ${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB`, 'success');
+
+        const startTime = performance.now();
+        
+        try {
+          const interpreter = await tflite.Interpreter.create(buffer);
+          const createTime = performance.now() - startTime;
+          
+          addLog('tflite', `✓ Interpreter created (${createTime.toFixed(0)}ms)`, 'success');
+          
+          // Get details
+          const inputDetails = interpreter.getInputDetails();
+          const outputDetails = interpreter.getOutputDetails();
+          
+          addLog('tflite', `✓ Input tensors: ${inputDetails.length}`, 'success');
+          addLog('tflite', `✓ Output tensors: ${outputDetails.length}`, 'success');
+          
+          if (inputDetails.length > 0) {
+            const input = inputDetails[0];
+            addLog('tflite', `  Input shape: [${input.shape.join(', ')}]`, 'info');
+            addLog('tflite', `  Input type: ${input.type}`, 'info');
+          }
+          
+          results.tflite = true;
+          showStatus('TFLite interpreter ready', 'ready');
+          
+        } catch (error) {
+          addLog('tflite', `✗ Create interpreter failed: ${error.message}`, 'error');
+          results.tflite = false;
+          showStatus('Interpreter creation failed', 'error');
+        }
+
+      } catch (error) {
+        addLog('tflite', `✗ Error: ${error.message}`, 'error');
+        results.tflite = false;
+        showStatus('Test failed', 'error');
+      }
+    }
+
+    // ============= TEST 6: Full Load =============
+    async function fullModelLoadTest() {
+      logs.full = [];
+      const modelPath = document.getElementById('modelPath').value;
+      addLog('full', `🚀 Starting full model load test`, 'info');
+      addLog('full', `Model path: ${modelPath}`, 'info');
+
+      try {
+        showStatus('Loading full model...', 'loading');
+
+        // Step 1: Fetch
+        addLog('full', `[1/4] Fetching model...`, 'info');
+        const response = await fetch(modelPath);
+        if (!response.ok) {
+          throw new Error(`Fetch failed: HTTP ${response.status}`);
+        }
+        addLog('full', `✓ Fetched successfully`, 'success');
+
+        // Step 2: ArrayBuffer
+        addLog('full', `[2/4] Converting to ArrayBuffer...`, 'info');
+        const buffer = await response.arrayBuffer();
+        addLog('full', `✓ Buffer size: ${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB`, 'success');
+
+        // Step 3: Check magic
+        addLog('full', `[3/4] Validating TFLite format...`, 'info');
+        const view = new Uint8Array(buffer);
+        if (view[0] !== 0x54 || view[1] !== 0x46 || view[2] !== 0x4C || view[3] !== 0x33) {
+          throw new Error('Invalid TFLite format (not TFL3)');
+        }
+        addLog('full', `✓ Valid TFLite file`, 'success');
+
+        // Step 4: Create interpreter
+        addLog('full', `[4/4] Creating interpreter...`, 'info');
+        const startTime = performance.now();
+        const interpreter = await tflite.Interpreter.create(buffer);
+        const createTime = performance.now() - startTime;
+        
+        addLog('full', `✓ Interpreter created (${createTime.toFixed(0)}ms)`, 'success');
+
+        // Get info
+        const inputDetails = interpreter.getInputDetails();
+        const outputDetails = interpreter.getOutputDetails();
+        
+        addLog('full', ``, 'info');
+        addLog('full', `🎉 MODEL LOADED SUCCESSFULLY!`, 'success');
+        addLog('full', `Input tensors: ${inputDetails.length}`, 'success');
+        addLog('full', `Output tensors: ${outputDetails.length}`, 'success');
+
+        results.full = true;
+        showStatus('✓ Model loaded successfully!', 'ready');
+
+      } catch (error) {
+        addLog('full', `✗ Error: ${error.message}`, 'error');
+        
+        if (error.message.includes('HTTP')) {
+          addLog('full', `💡 Check: Server chạy? File tồn tại?`, 'warning');
+        } else if (error.message.includes('TFLite')) {
+          addLog('full', `💡 Check: File có hỏng không?`, 'warning');
+        } else if (error.message.includes('Interpreter')) {
+          addLog('full', `💡 Check: Model có hỗ trợ không?`, 'warning');
+        }
+
+        results.full = false;
+        showStatus('✗ Model load failed', 'error');
+      }
+    }
+
+    // Auto check environment on load
+    window.addEventListener('load', () => {
+      checkEnvironment();
+    });
+  </script>
+</body>
+</html>

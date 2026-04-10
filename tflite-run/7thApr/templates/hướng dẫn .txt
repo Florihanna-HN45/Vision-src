@@ -1,0 +1,9 @@
+ultralytics + html
+Cách chạy:
+Bạn mở Terminal tại thư mục Yolo_Web_Project.
+
+Gõ lệnh: python app.py
+
+Mở trình duyệt Web và truy cập vào địa chỉ: http://localhost:5000
+
+Bấm "Start Camera" và tận hưởng thành quả vẽ Bbox chuẩn chỉ, nét nẹt 100% của Ultralytics nhé!

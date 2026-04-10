@@ -3,16 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YOLOv8 Object Detection</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.11.0/tf.min.js"></script>
+  <title>YOLOv8 Object Detection - Cloud Version</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite/dist/tf-tflite.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jpeg-js/0.4.4/jpeg.min.js"></script>
+  
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #0a0e27;
       color: #e0e0e0;
@@ -21,219 +20,44 @@
       height: 100vh;
       position: relative;
     }
-
     #canvasContainer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
     }
-
-    #canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    video {
-      display: none;
-    }
-
+    #canvas { display: block; width: 100%; height: 100%; }
+    video { display: none; }
     .glass-panel {
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(248, 202, 0, 0.15);
-      border-radius: 12px;
-      padding: 16px;
-      position: fixed;
-      z-index: 100;
-      color: #e0e0e0;
+      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px);
+      border: 1px solid rgba(248, 202, 0, 0.15); border-radius: 12px;
+      padding: 16px; position: fixed; z-index: 100; color: #e0e0e0;
     }
-
-    .stats-panel {
-      top: 16px;
-      left: 16px;
-      min-width: 280px;
-      font-size: 13px;
-      line-height: 1.8;
-    }
-
-    .controls-panel {
-      bottom: 16px;
-      left: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .control-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .label {
-      font-weight: 600;
-      color: #f8ca00;
-      min-width: 100px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    input[type="range"] {
-      flex: 1;
-      height: 4px;
-      border-radius: 2px;
-      background: rgba(248, 202, 0, 0.2);
-      outline: none;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #f8ca00;
-      cursor: pointer;
-      box-shadow: 0 0 8px rgba(248, 202, 0, 0.6);
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #f8ca00;
-      cursor: pointer;
-      border: none;
-      box-shadow: 0 0 8px rgba(248, 202, 0, 0.6);
-    }
-
-    .value-display {
-      min-width: 45px;
-      text-align: right;
-      color: #f8ca00;
-      font-weight: 600;
-    }
-
+    .stats-panel { top: 16px; left: 16px; min-width: 280px; font-size: 13px; line-height: 1.8; }
+    .controls-panel { bottom: 16px; left: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .control-row { display: flex; align-items: center; gap: 8px; }
+    .label { font-weight: 600; color: #f8ca00; min-width: 100px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="range"] { flex: 1; height: 4px; border-radius: 2px; background: rgba(248, 202, 0, 0.2); outline: none; -webkit-appearance: none; appearance: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #f8ca00; cursor: pointer; box-shadow: 0 0 8px rgba(248, 202, 0, 0.6); }
+    input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #f8ca00; cursor: pointer; border: none; box-shadow: 0 0 8px rgba(248, 202, 0, 0.6); }
+    .value-display { min-width: 45px; text-align: right; color: #f8ca00; font-weight: 600; }
     button {
-      background: linear-gradient(135deg, #f8ca00, #ffd700);
-      color: #0a0e27;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(248, 202, 0, 0.2);
+      background: linear-gradient(135deg, #f8ca00, #ffd700); color: #0a0e27; border: none;
+      padding: 10px 16px; border-radius: 8px; font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(248, 202, 0, 0.2);
     }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(248, 202, 0, 0.4);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .stat-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 4px 0;
-      border-bottom: 1px solid rgba(248, 202, 0, 0.1);
-    }
-
-    .stat-label {
-      color: #8899aa;
-      font-size: 12px;
-    }
-
-    .stat-value {
-      color: #f8ca00;
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-top: 2px;
-    }
-
-    .status-loading {
-      background: rgba(255, 193, 7, 0.2);
-      color: #ffc107;
-    }
-
-    .status-ready {
-      background: rgba(76, 175, 80, 0.2);
-      color: #4caf50;
-    }
-
-    .status-error {
-      background: rgba(244, 67, 54, 0.2);
-      color: #f44336;
-    }
-
-    .divider {
-      height: 1px;
-      background: rgba(248, 202, 0, 0.1);
-      margin: 8px 0;
-    }
-
-    .info-text {
-      font-size: 11px;
-      color: #667788;
-      margin-top: 4px;
-      line-height: 1.4;
-    }
-
-    .overlay-corner {
-      position: fixed;
-      bottom: 16px;
-      right: 16px;
-      z-index: 100;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 8px;
-    }
-
-    .button-group button {
-      flex: 1;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-
-    .pulse {
-      animation: pulse 1.5s ease-in-out infinite;
-    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(248, 202, 0, 0.4); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .stat-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(248, 202, 0, 0.1); }
+    .stat-label { color: #8899aa; font-size: 12px; }
+    .stat-value { color: #f8ca00; font-weight: 600; font-size: 13px; }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .status-loading { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+    .status-ready { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+    .status-error { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+    .divider { height: 1px; background: rgba(248, 202, 0, 0.1); margin: 8px 0; }
+    .info-text { font-size: 11px; color: #667788; margin-top: 4px; line-height: 1.4; }
+    .button-group { display: flex; gap: 8px; }
+    .button-group button { flex: 1; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -247,39 +71,31 @@
       DETECTION MONITOR
     </div>
     <div class="divider"></div>
-    
     <div class="stat-item">
       <span class="stat-label">Model Status</span>
       <span class="status-badge status-loading pulse" id="modelStatus">LOADING</span>
     </div>
-    
     <div class="stat-item">
       <span class="stat-label">Model</span>
-      <span class="stat-value" id="modelName">YOLOv8n</span>
+      <span class="stat-value" id="modelName">YOLOv8n (Cloud)</span>
     </div>
-
     <div class="stat-item">
       <span class="stat-label">FPS</span>
       <span class="stat-value" id="fps">0</span>
     </div>
-
     <div class="stat-item">
       <span class="stat-label">Inference Time</span>
       <span class="stat-value" id="inferenceTime">0 ms</span>
     </div>
-
     <div class="stat-item">
       <span class="stat-label">Objects Detected</span>
       <span class="stat-value" id="objectCount">0</span>
     </div>
-
     <div class="stat-item">
       <span class="stat-label">Camera Resolution</span>
       <span class="stat-value" id="resolution">-</span>
     </div>
-
     <div class="divider"></div>
-    
     <div class="info-text">
       Confidence threshold: <span style="color: #f8ca00;" id="confDisplay">50%</span><br>
       Input size: 640×640 (YOLOv8 standard)
@@ -290,27 +106,19 @@
     <div style="font-weight: 700; font-size: 12px; color: #f8ca00; text-transform: uppercase; letter-spacing: 1px;">
       Controls
     </div>
-    
-    <button id="cameraBtn" onclick="toggleCamera()" style="width: 100%;">Start Camera</button>
-
+    <button id="cameraBtn" onclick="toggleCamera()" style="width: 100%;" disabled>Start Camera</button>
     <div class="divider"></div>
-
     <div class="control-row">
       <span class="label">Confidence</span>
-      <input type="range" id="confidenceSlider" min="0.1" max="0.9" step="0.05" value="0.5" 
-             oninput="updateConfidence(this.value)">
+      <input type="range" id="confidenceSlider" min="0.1" max="0.9" step="0.05" value="0.5" oninput="updateConfidence(this.value)">
       <span class="value-display" id="confValue">0.50</span>
     </div>
-
     <div class="control-row">
       <span class="label">IOU NMS</span>
-      <input type="range" id="iouSlider" min="0.1" max="0.9" step="0.05" value="0.45" 
-             oninput="updateIoU(this.value)">
+      <input type="range" id="iouSlider" min="0.1" max="0.9" step="0.05" value="0.45" oninput="updateIoU(this.value)">
       <span class="value-display" id="iouValue">0.45</span>
     </div>
-
     <div class="divider"></div>
-
     <div class="button-group">
       <button onclick="captureFrame()" style="flex: 1;">Capture</button>
       <button onclick="clearDetections()" style="flex: 1;">Clear</button>
@@ -322,9 +130,8 @@
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const video = document.getElementById('video');
     
-    let interpreter = null;
-    let inputDetails = null;
-    let outputDetails = null;
+    // Đã thay đổi interpreter thành tfliteModel
+    let tfliteModel = null; 
     let isRunning = false;
     let detections = [];
     
@@ -349,32 +156,22 @@
     async function initializeModel() {
       try {
         updateStatus('LOADING');
-        console.log('Loading YOLOv8n TFLite model...');
+        console.log('Fetching YOLOv8n TFLite model from GitHub CDN...');
         
-        const modelPath = 'coco_yolov8n_int8.tflite';
-        const response = await fetch(modelPath);
+        tflite.setWasmPath('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite/dist/');
+        const modelPath = 'https://cdn.jsdelivr.net/gh/Florihanna-HN45/Vision-src@master/tflite-run/7thApr/coco_yolov8n_int8.tflite';
         
-        if (!response.ok) {
-          throw new Error(`Model not found: ${modelPath}`);
-        }
-        
-        const buffer = await response.arrayBuffer();
-        interpreter = await tflite.Interpreter.create(buffer);
-        
-        inputDetails = interpreter.getInputDetails();
-        outputDetails = interpreter.getOutputDetails();
-        
+        // Load model theo cú pháp mới
+        tfliteModel = await tflite.loadTFLiteModel(modelPath);
         console.log('Model loaded successfully');
-        console.log('Input shape:', inputDetails);
-        console.log('Output shape:', outputDetails);
         
         updateStatus('READY');
         document.getElementById('modelStatus').classList.remove('pulse');
-        
+        document.getElementById('cameraBtn').disabled = false;
       } catch (error) {
         console.error('Error loading model:', error);
         updateStatus('ERROR');
-        alert('Model load failed: ' + error.message + '\n\nPlace "coco_yolov8n_int8.tflite" in the same directory as this HTML file.');
+        alert('Model load failed: ' + error.message);
       }
     }
 
@@ -396,32 +193,25 @@
     }
 
     async function toggleCamera() {
-      if (!interpreter) {
-        alert('Model not loaded yet');
+      // Đã đổi !interpreter thành !tfliteModel
+      if (!tfliteModel) {
+        alert('Model is still loading. Please wait.');
         return;
       }
 
       if (!isRunning) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-              width: { ideal: 1280 }, 
-              height: { ideal: 720 },
-              facingMode: 'environment'
-            }
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'environment' }
           });
-          
           video.srcObject = stream;
           video.play();
           isRunning = true;
           document.getElementById('cameraBtn').textContent = 'Stop Camera';
-          
           video.onloadedmetadata = () => {
-            document.getElementById('resolution').textContent = 
-              `${video.videoWidth}×${video.videoHeight}`;
+            document.getElementById('resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
             startDetection();
           };
-          
         } catch (error) {
           console.error('Camera error:', error);
           alert('Camera access denied: ' + error.message);
@@ -434,12 +224,12 @@
     function stopCamera() {
       isRunning = false;
       const stream = video.srcObject;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      if (stream) stream.getTracks().forEach(track => track.stop());
       document.getElementById('cameraBtn').textContent = 'Start Camera';
       ctx.fillStyle = 'rgba(10, 14, 39, 0.9)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      document.getElementById('objectCount').textContent = '0';
+      document.getElementById('fps').textContent = '0';
     }
 
     function resizeCanvas() {
@@ -448,123 +238,91 @@
     }
 
     function preprocessImage(image, inputWidth, inputHeight) {
-      const canvas = document.createElement('canvas');
-      canvas.width = inputWidth;
-      canvas.height = inputHeight;
-      const ctx = canvas.getContext('2d');
-      
-      ctx.drawImage(image, 0, 0, inputWidth, inputHeight);
-      const imageData = ctx.getImageData(0, 0, inputWidth, inputHeight);
+      const canvasTmp = document.createElement('canvas');
+      canvasTmp.width = inputWidth; canvasTmp.height = inputHeight;
+      const ctxTmp = canvasTmp.getContext('2d');
+      ctxTmp.drawImage(image, 0, 0, inputWidth, inputHeight);
+      const imageData = ctxTmp.getImageData(0, 0, inputWidth, inputHeight);
       const data = imageData.data;
-      
       const normalized = new Float32Array(inputWidth * inputHeight * 3);
       for (let i = 0; i < data.length; i += 4) {
         normalized[i / 4] = data[i] / 255.0;
         normalized[inputWidth * inputHeight + i / 4] = data[i + 1] / 255.0;
         normalized[inputWidth * inputHeight * 2 + i / 4] = data[i + 2] / 255.0;
       }
-      
       return normalized;
     }
 
     function processDetections(outputData, scaleX, scaleY) {
       const detections = [];
       const outputSize = outputData.length / 85;
-      
       for (let i = 0; i < outputSize; i++) {
         const index = i * 85;
         const confidence = outputData[index + 4];
-        
         if (confidence < confidenceThreshold) continue;
-        
-        let maxClass = 0;
-        let maxScore = 0;
-        
+        let maxClass = 0; let maxScore = 0;
         for (let j = 0; j < 80; j++) {
           const score = outputData[index + 5 + j];
-          if (score > maxScore) {
-            maxScore = score;
-            maxClass = j;
-          }
+          if (score > maxScore) { maxScore = score; maxClass = j; }
         }
-        
         if (maxScore < confidenceThreshold) continue;
-        
-        const x = outputData[index];
-        const y = outputData[index + 1];
-        const w = outputData[index + 2];
-        const h = outputData[index + 3];
-        
-        const finalScore = confidence * maxScore;
-        
+        const x = outputData[index]; const y = outputData[index + 1];
+        const w = outputData[index + 2]; const h = outputData[index + 3];
         detections.push({
-          x: (x - w / 2) * scaleX,
-          y: (y - h / 2) * scaleY,
-          width: w * scaleX,
-          height: h * scaleY,
-          confidence: finalScore,
-          class: maxClass,
-          className: COCO_CLASSES[maxClass]
+          x: (x - w / 2) * scaleX, y: (y - h / 2) * scaleY,
+          width: w * scaleX, height: h * scaleY,
+          confidence: confidence * maxScore, class: maxClass, className: COCO_CLASSES[maxClass]
         });
       }
-      
       return nonMaxSuppression(detections, iouThreshold);
     }
 
     function nonMaxSuppression(boxes, iouThreshold) {
       if (boxes.length === 0) return [];
-      
       boxes.sort((a, b) => b.confidence - a.confidence);
       const kept = [];
-      
       for (let i = 0; i < boxes.length; i++) {
         let keep = true;
         for (let j = 0; j < kept.length; j++) {
-          const iou = calculateIoU(boxes[i], kept[j]);
-          if (iou > iouThreshold) {
-            keep = false;
-            break;
-          }
+          if (calculateIoU(boxes[i], kept[j]) > iouThreshold) { keep = false; break; }
         }
         if (keep) kept.push(boxes[i]);
       }
-      
       return kept;
     }
 
     function calculateIoU(box1, box2) {
-      const x1 = Math.max(box1.x, box2.x);
-      const y1 = Math.max(box1.y, box2.y);
+      const x1 = Math.max(box1.x, box2.x); const y1 = Math.max(box1.y, box2.y);
       const x2 = Math.min(box1.x + box1.width, box2.x + box2.width);
       const y2 = Math.min(box1.y + box1.height, box2.y + box2.height);
-      
       const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-      const area1 = box1.width * box1.height;
-      const area2 = box2.width * box2.height;
-      const union = area1 + area2 - intersection;
-      
+      const union = (box1.width * box1.height) + (box2.width * box2.height) - intersection;
       return union === 0 ? 0 : intersection / union;
     }
 
     async function detect() {
-      if (!isRunning || !interpreter) return;
+      // Đã đổi !interpreter thành !tfliteModel
+      if (!isRunning || !tfliteModel) return;
 
       resizeCanvas();
-      
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       ctx.fillStyle = 'rgba(10, 14, 39, 0.2)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       try {
-        const inputWidth = 640;
-        const inputHeight = 640;
+        const inputWidth = 640; const inputHeight = 640;
         const startTime = performance.now();
-        
         const preprocessed = preprocessImage(video, inputWidth, inputHeight);
-        interpreter.setInput(preprocessed);
-        interpreter.invoke();
         
-        const output = interpreter.getOutput(0);
+        // Logic inference mới dành cho TFJS TFLite (dùng tensor)
+        const inputTensor = tf.tensor(preprocessed, [1, inputWidth, inputHeight, 3], 'float32');
+        const outputTensor = tfliteModel.predict(inputTensor);
+        const output = outputTensor.dataSync(); 
+        
+        // Xóa bộ nhớ tensor ngay lập tức để không bị tràn RAM
+        inputTensor.dispose();
+        outputTensor.dispose();
+        
         const endTime = performance.now();
         inferenceTime = endTime - startTime;
         
@@ -574,29 +332,17 @@
         detections = processDetections(output, scaleX, scaleY);
 
         detections.forEach(det => {
-          ctx.strokeStyle = '#f8ca00';
-          ctx.lineWidth = 3;
-          ctx.shadowColor = 'rgba(248, 202, 0, 0.5)';
-          ctx.shadowBlur = 15;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 0;
-          
+          ctx.strokeStyle = '#f8ca00'; ctx.lineWidth = 3;
+          ctx.shadowColor = 'rgba(248, 202, 0, 0.5)'; ctx.shadowBlur = 15;
           ctx.strokeRect(det.x, det.y, det.width, det.height);
           ctx.shadowBlur = 0;
 
           const label = `${det.className} ${(det.confidence * 100).toFixed(1)}%`;
-          const fontSize = 14;
-          ctx.font = `bold ${fontSize}px 'JetBrains Mono'`;
-          const textMetrics = ctx.measureText(label);
-          const textWidth = textMetrics.width + 8;
-          const textHeight = fontSize + 6;
+          const fontSize = 14; ctx.font = `bold ${fontSize}px 'JetBrains Mono'`;
+          const textWidth = ctx.measureText(label).width + 8; const textHeight = fontSize + 6;
 
-          ctx.fillStyle = '#f8ca00';
-          ctx.fillRect(det.x, det.y - textHeight - 2, textWidth, textHeight);
-
-          ctx.fillStyle = '#0a0e27';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(label, det.x + 4, det.y - fontSize / 2 - 1);
+          ctx.fillStyle = '#f8ca00'; ctx.fillRect(det.x, det.y - textHeight - 2, textWidth, textHeight);
+          ctx.fillStyle = '#0a0e27'; ctx.textBaseline = 'middle'; ctx.fillText(label, det.x + 4, det.y - fontSize / 2 - 1);
         });
 
         document.getElementById('objectCount').textContent = detections.length;
@@ -605,37 +351,22 @@
         frameCount++;
         const now = performance.now();
         if (now - lastTime >= 1000) {
-          fps = frameCount;
-          document.getElementById('fps').textContent = fps;
-          frameCount = 0;
-          lastTime = now;
+          fps = frameCount; document.getElementById('fps').textContent = fps;
+          frameCount = 0; lastTime = now;
         }
-
       } catch (error) {
         console.error('Detection error:', error);
       }
-
       requestAnimationFrame(detect);
     }
 
-    function startDetection() {
-      detect();
-    }
-
+    function startDetection() { detect(); }
     function captureFrame() {
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = 'detection_' + Date.now() + '.png';
-      link.click();
+      const link = document.createElement('a'); link.href = canvas.toDataURL('image/png');
+      link.download = 'detection_' + Date.now() + '.png'; link.click();
     }
-
-    function clearDetections() {
-      detections = [];
-      document.getElementById('objectCount').textContent = '0';
-    }
-
+    function clearDetections() { detections = []; document.getElementById('objectCount').textContent = '0'; }
     window.addEventListener('resize', resizeCanvas);
-    
     resizeCanvas();
     initializeModel();
   </script>

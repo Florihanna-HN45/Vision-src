@@ -5,7 +5,7 @@ from ultralytics import YOLO
 def main():
     # 1. Khởi tạo model bằng PyTorch gốc cho lẹ (không cần TFLite trên PC)
     print("Đang load model YOLOv8n coco...")
-    model = YOLO(r"D:\Unarrage\coco_yolov8n_int8.tflite") 
+    model = YOLO(r"./7thApr/coco_yolov8n_int8.tflite") 
 
     # 2. Khởi tạo Webcam (0 là camera mặc định của PC/Laptop)
     cap = cv2.VideoCapture(0)

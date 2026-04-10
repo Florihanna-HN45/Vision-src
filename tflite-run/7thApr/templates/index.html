@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YOLOv8 Object Detection - Python Backend</title>
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0e27; color: #e0e0e0; font-family: 'JetBrains Mono', monospace; overflow: hidden; height: 100vh; position: relative; }
+    #videoContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: flex; justify-content: center; align-items: center; }
+    /* Thay vì Canvas, ta dùng thẻ img để nhận video streaming từ Python */
+    #videoStream { width: 100%; height: 100%; object-fit: cover; display: none; }
+    
+    .glass-panel { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(248, 202, 0, 0.15); border-radius: 12px; padding: 16px; position: fixed; z-index: 100; color: #e0e0e0; }
+    .stats-panel { top: 16px; left: 16px; min-width: 280px; font-size: 13px; line-height: 1.8; }
+    .controls-panel { bottom: 16px; left: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .control-row { display: flex; align-items: center; gap: 8px; }
+    .label { font-weight: 600; color: #f8ca00; min-width: 100px; font-size: 12px; text-transform: uppercase; }
+    input[type="range"] { flex: 1; height: 4px; border-radius: 2px; background: rgba(248, 202, 0, 0.2); outline: none; -webkit-appearance: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #f8ca00; cursor: pointer; box-shadow: 0 0 8px rgba(248, 202, 0, 0.6); }
+    .value-display { min-width: 45px; text-align: right; color: #f8ca00; font-weight: 600; }
+    button { background: linear-gradient(135deg, #f8ca00, #ffd700); color: #0a0e27; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; }
+    button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(248, 202, 0, 0.4); }
+    .stat-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(248, 202, 0, 0.1); }
+    .stat-label { color: #8899aa; font-size: 12px; }
+    .stat-value { color: #f8ca00; font-weight: 600; font-size: 13px; }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .status-ready { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+    .divider { height: 1px; background: rgba(248, 202, 0, 0.1); margin: 8px 0; }
+    .info-text { font-size: 11px; color: #667788; margin-top: 4px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  
+  <div id="videoContainer">
+    <img id="videoStream" src="" alt="Live Video Feed">
+  </div>
+
+  <div class="glass-panel stats-panel">
+    <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #f8ca00; letter-spacing: 1px;">
+      DETECTION MONITOR
+    </div>
+    <div class="divider"></div>
+    <div class="stat-item">
+      <span class="stat-label">System Status</span>
+      <span class="status-badge status-ready" id="modelStatus">READY</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Backend</span>
+      <span class="stat-value">Python + Ultralytics</span>
+    </div>
+    <div class="divider"></div>
+    <div class="info-text">
+      Bbox is now perfectly drawn by Ultralytics.<br>
+      No more JS matrix math!
+    </div>
+  </div>
+
+  <div class="glass-panel controls-panel">
+    <div style="font-weight: 700; font-size: 12px; color: #f8ca00; text-transform: uppercase;">
+      Controls
+    </div>
+    <button id="cameraBtn" onclick="toggleCamera()" style="width: 100%;">Start Camera</button>
+    <div class="divider"></div>
+    <div class="control-row">
+      <span class="label">Confidence</span>
+      <input type="range" id="confidenceSlider" min="0.1" max="0.9" step="0.05" value="0.5" onchange="sendParams()">
+      <span class="value-display" id="confValue">0.50</span>
+    </div>
+    <div class="control-row">
+      <span class="label">IOU NMS</span>
+      <input type="range" id="iouSlider" min="0.1" max="0.9" step="0.05" value="0.45" onchange="sendParams()">
+      <span class="value-display" id="iouValue">0.45</span>
+    </div>
+  </div>
+
+  <script>
+    let isRunning = false;
+    const videoStream = document.getElementById('videoStream');
+    const confSlider = document.getElementById('confidenceSlider');
+    const iouSlider = document.getElementById('iouSlider');
+
+    // Cập nhật số liệu hiển thị trên Web và gửi lệnh về Python
+    function sendParams() {
+      const conf = confSlider.value;
+      const iou = iouSlider.value;
+      
+      document.getElementById('confValue').textContent = parseFloat(conf).toFixed(2);
+      document.getElementById('iouValue').textContent = parseFloat(iou).toFixed(2);
+
+      // Gửi thông số về API của Flask
+      fetch('/update_params', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conf: conf, iou: iou })
+      });
+    }
+
+    // Bật/tắt camera
+    function toggleCamera() {
+      if (!isRunning) {
+        // Trỏ src của ảnh về API phát video của Python
+        videoStream.src = "/video_feed";
+        videoStream.style.display = "block";
+        document.getElementById('cameraBtn').textContent = 'Stop Camera';
+        isRunning = true;
+      } else {
+        videoStream.src = "";
+        videoStream.style.display = "none";
+        document.getElementById('cameraBtn').textContent = 'Start Camera';
+        isRunning = false;
+      }
+    }
+
+    // Gắn sự kiện để thanh trượt kéo đến đâu, cập nhật số đến đó
+    confSlider.addEventListener('input', (e) => document.getElementById('confValue').textContent = parseFloat(e.target.value).toFixed(2));
+    iouSlider.addEventListener('input', (e) => document.getElementById('iouValue').textContent = parseFloat(e.target.value).toFixed(2));
+  </script>
+</body>
+</html>
