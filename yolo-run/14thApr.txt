@@ -1,0 +1,3 @@
+- Thành quả:
+2 file w3-distance chạy thành công với kèm tính khoảng cách từ tâm box đến tầm khung hình.
+- điều khó khăn chính là: ứng dụng vào code trên phần cứng chính thức.

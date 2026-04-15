@@ -11,7 +11,7 @@ model = YOLO("coco_yolov8n_int8.tflite")
 params = {"conf": 0.5, "iou": 0.45}
 
 def generate_frames():
-    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW) # 0 là camera mặc định
+    cap = cv2.VideoCapture("http://192.168.2.78:5000/video_feed", cv2.CAP_DSHOW) # 0 là camera mặc định
     # BỔ SUNG: Ép camera USB chạy ở độ phân giải HD (1280x720) cho nét
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)

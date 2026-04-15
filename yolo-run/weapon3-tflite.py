@@ -4,7 +4,7 @@ from ultralytics import YOLO
 
 # 1. Load model TFLITE
 # Đảm bảo đường dẫn file .tflite chính xác
-model_path = r"C:\Users\This pc\Downloads\pdisease1.tflite"
+model_path = r"D:\Unarrage\kfs1_float16.tflite"
 
 try:
     # Ultralytics hỗ trợ chạy trực tiếp .tflite thông qua interpreter
@@ -16,7 +16,7 @@ except Exception as e:
 
 # 2. Cấu hình Camera
 #ip_url = "http://192.168.2.74:8080/video" 
-ip_url = 1 
+ip_url = 0 
 cap = cv2.VideoCapture(ip_url, cv2.CAP_DSHOW)
 
 # Thiết lập độ phân giải để đồng bộ với imgsz của model (giúp tăng FPS)
